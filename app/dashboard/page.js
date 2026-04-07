@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export default function Dashboard() {
   const [user, setUser]           = useState(null)
-  const [business, setBusiness]   = useState(null)
+  const [business, setBusiness] = useState({ id: '1f01c3a6-85dc-403e-b88a-830c4b56b353', name: 'My Business', reply_mode: 'approve' })
   const [reviews, setReviews]     = useState([])
   const [generating, setGenerating] = useState({})
   const [replies, setReplies]     = useState({})
