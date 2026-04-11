@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [showAdd, setShowAdd]     = useState(false)
   const [loading, setLoading]     = useState(true)
   const [replyMode, setReplyMode] = useState('approve')
+  const [page, setPage] = useState('Dashboard')
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -158,12 +159,14 @@ export default function Dashboard() {
           <div style={{ fontSize:11, color:'#7a7d85', marginTop:2, textTransform:'uppercase' }}>Review management</div>
         </div>
         <div style={{ padding:'16px 12px', flex:1 }}>
-          {[['◈','Dashboard',true],['✉','Reviews',false],['✓','Replied',false],['⚙','Settings',false]].map(([icon,label,active]) => (
-            <div key={label} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, marginBottom:2, background: active ? 'rgba(200,240,100,0.12)' : 'none', color: active ? '#c8f064' : '#7a7d85', cursor:'pointer' }}>
-              {icon} {label}
-            </div>
-          ))}
-        </div>
+          {[['◈','Dashboard'],['✉','Reviews'],['✓','Replied'],['⚙','Settings']].map(([icon,label]) => (
+  <div key={label} onClick={() => setPage(label)}
+    style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, marginBottom:2,
+      background: page===label ? 'rgba(200,240,100,0.12)' : 'none',
+      color: page===label ? '#c8f064' : '#7a7d85', cursor:'pointer' }}>
+    {icon} {label}
+  </div>
+))}
 
         {/* Reply mode toggle */}
         <div style={{ margin:'0 12px 12px', padding:'14px', background:'#1e2026', borderRadius:8 }}>
@@ -253,6 +256,53 @@ export default function Dashboard() {
           )}
 
           {/* Reviews */}
+          {page === 'Replied' && (
+  <div>
+    <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews</div>
+    <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
+      {reviews.filter(r => statuses[r.id] === 'replied').length === 0 && (
+        <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
+          No replied reviews yet
+        </div>
+      )}
+      {reviews.filter(r => statuses[r.id] === 'replied').map(r => (
+        <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:'3px solid #c8f064', borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontSize:13.5, fontWeight:500, marginBottom:6 }}>{r.reviewer_name}</div>
+          <div style={{ color:'#ffb347', fontSize:12, marginBottom:8 }}>{'★'.repeat(r.stars)}</div>
+          <div style={{ fontSize:13, color:'#7a7d85', marginBottom:10 }}>"{r.review_text}"</div>
+          <div style={{ background:'#1e2026', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8f064', borderLeft:'2px solid #c8f064' }}>
+            <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>Reply posted</div>
+            {replies[r.id]}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{page === 'Settings' && (
+  <div style={{ maxWidth:500 }}>
+    <div style={{ fontSize:15, fontWeight:600, marginBottom:20 }}>Settings</div>
+    <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24, marginBottom:16 }}>
+      <div style={{ fontSize:13, fontWeight:600, marginBottom:16 }}>Business Details</div>
+      <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Name</label>
+      <input defaultValue={business?.name}
+        style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, boxSizing:'border-box', marginBottom:16 }}/>
+      <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Type</label>
+      <input defaultValue={business?.type}
+        style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, boxSizing:'border-box', marginBottom:16 }}/>
+      <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+        Save changes
+      </button>
+    </div>
+  </div>
+)}
+
+{page === 'Reviews' && (
+  <div>
+    <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span></div>
+  </div>
+)}
           <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
             Reviews {reviews.length > 0 && <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span>}
           </div>
