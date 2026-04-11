@@ -256,132 +256,131 @@ export default function Dashboard() {
           )}
 
           {/* Reviews */}
-          {page === 'Replied' && (
-  <div>
-    <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews</div>
-    <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
-      {reviews.filter(r => statuses[r.id] === 'replied').length === 0 && (
-        <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
-          No replied reviews yet
-        </div>
-      )}
-      {reviews.filter(r => statuses[r.id] === 'replied').map(r => (
-        <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:'3px solid #c8f064', borderRadius:12, padding:'18px 20px' }}>
-          <div style={{ fontSize:13.5, fontWeight:500, marginBottom:6 }}>{r.reviewer_name}</div>
-          <div style={{ color:'#ffb347', fontSize:12, marginBottom:8 }}>{'★'.repeat(r.stars)}</div>
-          <div style={{ fontSize:13, color:'#7a7d85', marginBottom:10 }}>"{r.review_text}"</div>
-          <div style={{ background:'#1e2026', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8f064', borderLeft:'2px solid #c8f064' }}>
-            <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>Reply posted</div>
-            {replies[r.id]}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-{page === 'Settings' && (
-  <div style={{ maxWidth:500 }}>
-    <div style={{ fontSize:15, fontWeight:600, marginBottom:20 }}>Settings</div>
-    <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24, marginBottom:16 }}>
-      <div style={{ fontSize:13, fontWeight:600, marginBottom:16 }}>Business Details</div>
-      <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Name</label>
-      <input defaultValue={business?.name}
-        style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, boxSizing:'border-box', marginBottom:16 }}/>
-      <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Type</label>
-      <input defaultValue={business?.type}
-        style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, boxSizing:'border-box', marginBottom:16 }}/>
-      <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
-        Save changes
-      </button>
-    </div>
-  </div>
-)}
-
-{page === 'Reviews' && (
-  <div>
-    <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span></div>
-  </div>
-)}
-          <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
-            Reviews {reviews.length > 0 && <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span>}
-          </div>
-
-          {reviews.length === 0 && (
-            <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
-              <div style={{ fontSize:32, marginBottom:12 }}>✉</div>
-              <div style={{ fontSize:15, marginBottom:8 }}>No reviews yet</div>
-              <div style={{ fontSize:13, marginBottom:20 }}>Add a review manually to get started</div>
-              <button onClick={() => setShowAdd(true)} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
-                + Add your first review
-              </button>
+          {/* Page content */}
+          {page === 'Dashboard' && (
+            <div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
+                Reviews {reviews.length > 0 && <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span>}
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
+                {reviews.length === 0 && (
+                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
+                    <div style={{ fontSize:32, marginBottom:12 }}>✉</div>
+                    <div style={{ fontSize:15, marginBottom:8 }}>No reviews yet</div>
+                    <button onClick={() => setShowAdd(true)} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Add your first review</button>
+                  </div>
+                )}
+                {reviews.filter(r => statuses[r.id] !== 'replied').map(r => {
+                  const status = statuses[r.id] || 'pending'
+                  const reply = replies[r.id]
+                  const sentiment = r.stars >= 4 ? 'positive' : r.stars <= 2 ? 'negative' : 'neutral'
+                  const borderCol = sentiment === 'negative' ? '#ff6b6b' : '#ffb347'
+                  return (
+                    <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:`3px solid ${borderCol}`, borderRadius:12, padding:'18px 20px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <div style={{ width:34, height:34, borderRadius:'50%', background:'#1e2026', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13, color:'#7a7d85' }}>
+                            {(r.reviewer_name||'?').split(' ').map(n=>n[0]).join('').toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontSize:13.5, fontWeight:500 }}>{r.reviewer_name}</div>
+                            <div style={{ color:'#ffb347', fontSize:12 }}>{'★'.repeat(r.stars)}</div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(255,179,71,0.12)', color:'#ffb347' }}>Pending</span>
+                      </div>
+                      <div style={{ fontSize:13.5, color:'#7a7d85', lineHeight:1.6, marginBottom:12 }}>"{r.review_text}"</div>
+                      {reply && (
+                        <div style={{ background:'#1e2026', borderRadius:8, padding:'12px 14px', fontSize:13, color:'#c8f064', lineHeight:1.6, marginBottom:12, borderLeft:'2px solid #c8f064' }}>
+                          <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>AI Reply</div>
+                          {reply}
+                        </div>
+                      )}
+                      <div style={{ display:'flex', gap:8 }}>
+                        {!reply && (
+                          <button onClick={() => generateReply(r)} disabled={generating[r.id]}
+                            style={{ background:'rgba(200,240,100,0.12)', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#c8f064', cursor:'pointer', opacity: generating[r.id] ? 0.6 : 1 }}>
+                            {generating[r.id] ? '✦ Generating...' : '✦ Generate reply'}
+                          </button>
+                        )}
+                        {reply && replyMode === 'approve' && (
+                          <button onClick={() => postReply(r.id)}
+                            style={{ background:'#c8f064', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#1a2200', fontWeight:700, cursor:'pointer' }}>
+                            ✓ Approve & post
+                          </button>
+                        )}
+                        {reply && (
+                          <button onClick={() => generateReply(r)} disabled={generating[r.id]}
+                            style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#7a7d85', cursor:'pointer' }}>
+                            ↺ Re-generate
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
-          <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
-            {reviews.map(r => {
-              const status    = statuses[r.id] || r.reply_status || 'pending'
-              const reply     = replies[r.id]
-              const sentiment = r.stars >= 4 ? 'positive' : r.stars <= 2 ? 'negative' : 'neutral'
-              const borderCol = status==='replied' ? '#c8f064' : sentiment==='negative' ? '#ff6b6b' : '#ffb347'
-
-              return (
-                <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:`3px solid ${borderCol}`, borderRadius:12, padding:'18px 20px' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:34, height:34, borderRadius:'50%', background:'#1e2026', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13, color:'#7a7d85', flexShrink:0 }}>
-                        {(r.reviewer_name||'?').split(' ').map(n=>n[0]).join('').toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontSize:13.5, fontWeight:500 }}>{r.reviewer_name || 'Anonymous'}</div>
-                        <div style={{ color:'#ffb347', fontSize:12 }}>{'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}</div>
-                      </div>
+          {page === 'Reviews' && (
+            <div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span></div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
+                {reviews.map(r => (
+                  <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:13.5, fontWeight:500, marginBottom:4 }}>{r.reviewer_name}</div>
+                      <div style={{ color:'#ffb347', fontSize:12, marginBottom:4 }}>{'★'.repeat(r.stars)}</div>
+                      <div style={{ fontSize:13, color:'#7a7d85' }}>"{r.review_text}"</div>
                     </div>
-                    <span style={{ fontSize:11, fontWeight:500, padding:'3px 9px', borderRadius:99, alignSelf:'flex-start',
-                      background: status==='replied' ? 'rgba(200,240,100,0.12)' : status==='draft' ? 'rgba(255,179,71,0.12)' : sentiment==='negative' ? 'rgba(255,107,107,0.12)' : 'rgba(255,179,71,0.12)',
-                      color: status==='replied' ? '#c8f064' : status==='draft' ? '#ffb347' : sentiment==='negative' ? '#ff6b6b' : '#ffb347' }}>
-                      {status==='replied' ? 'Replied' : status==='draft' ? 'Ready to post' : sentiment==='negative' ? 'Needs reply' : 'Pending'}
+                    <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, marginLeft:16, flexShrink:0,
+                      background: statuses[r.id]==='replied' ? 'rgba(200,240,100,0.12)' : 'rgba(255,179,71,0.12)',
+                      color: statuses[r.id]==='replied' ? '#c8f064' : '#ffb347' }}>
+                      {statuses[r.id]==='replied' ? 'Replied' : 'Pending'}
                     </span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div style={{ fontSize:13.5, color:'#7a7d85', lineHeight:1.6, marginBottom:12 }}>"{r.review_text}"</div>
-
-                  {reply && (
-                    <div style={{ background:'#1e2026', borderRadius:8, padding:'12px 14px', fontSize:13, color:'#c8f064', lineHeight:1.6, marginBottom:12, borderLeft:'2px solid #c8f064' }}>
-                      <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>AI Reply</div>
-                      {reply}
+          {page === 'Replied' && (
+            <div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
+                {reviews.filter(r => statuses[r.id] === 'replied').length === 0 && (
+                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>No replied reviews yet</div>
+                )}
+                {reviews.filter(r => statuses[r.id] === 'replied').map(r => (
+                  <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:'3px solid #c8f064', borderRadius:12, padding:'18px 20px' }}>
+                    <div style={{ fontSize:13.5, fontWeight:500, marginBottom:4 }}>{r.reviewer_name}</div>
+                    <div style={{ color:'#ffb347', fontSize:12, marginBottom:8 }}>{'★'.repeat(r.stars)}</div>
+                    <div style={{ fontSize:13, color:'#7a7d85', marginBottom:10 }}>"{r.review_text}"</div>
+                    <div style={{ background:'#1e2026', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8f064', borderLeft:'2px solid #c8f064' }}>
+                      <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>Reply posted</div>
+                      {replies[r.id]}
                     </div>
-                  )}
-
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {status !== 'replied' && !reply && (
-                      <button onClick={() => generateReply(r)} disabled={generating[r.id]}
-                        style={{ background:'rgba(200,240,100,0.12)', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#c8f064', cursor:'pointer', fontFamily:'DM Sans,sans-serif', opacity: generating[r.id] ? 0.6 : 1 }}>
-                        {generating[r.id] ? '✦ Generating...' : '✦ Generate reply'}
-                      </button>
-                    )}
-                    {reply && status !== 'replied' && replyMode === 'approve' && (
-                      <button onClick={() => postReply(r.id)}
-                        style={{ background:'#c8f064', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#1a2200', fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
-                        ✓ Approve & post
-                      </button>
-                    )}
-                    {reply && status !== 'replied' && (
-                      <button onClick={() => generateReply(r)} disabled={generating[r.id]}
-                        style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
-                        ↺ Re-generate
-                      </button>
-                    )}
-                    {status === 'replied' && (
-                      <span style={{ fontSize:12, color:'#7a7d85', padding:'7px 0' }}>✓ Reply posted</span>
-                    )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {page === 'Settings' && (
+            <div style={{ maxWidth:500 }}>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:20 }}>Settings</div>
+              <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24 }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:16 }}>Business Details</div>
+                <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Name</label>
+                <input defaultValue={business?.name}
+                  style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
+                <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Type</label>
+                <input defaultValue={business?.type}
+                  style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
+                <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  Save changes
+                </button>
+              </div>
+            </div>
+          )}
