@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export default function Dashboard() {
   const [user, setUser]             = useState(null)
-  const [business, setBusiness]     = useState({ id: '1f01c3a6-85dc-403e-b88a-830c4b56b353', name: 'My Business', reply_mode: 'approve' })
+  const [business, setBusiness]     = useState(null)
   const [reviews, setReviews]       = useState([])
   const [generating, setGenerating] = useState({})
   const [replies, setReplies]       = useState({})
@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [loading, setLoading]       = useState(true)
   const [replyMode, setReplyMode]   = useState('approve')
   const [page, setPage]             = useState('Dashboard')
+  const [saving, setSaving]         = useState(false)
+  const [settingsForm, setSettingsForm] = useState({ name: '', type: '', tone: 'auto' })
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -34,6 +36,7 @@ export default function Dashboard() {
       if (biz) {
         setBusiness(biz)
         setReplyMode(biz.reply_mode || 'approve')
+        setSettingsForm({ name: biz.name || '', type: biz.type || '', tone: biz.tone || 'auto' })
 
         const { data: revs } = await supabase
           .from('reviews')
@@ -52,6 +55,19 @@ export default function Dashboard() {
           setStatuses(s)
           setReplies(r)
         }
+      } else {
+        // No business yet — create one
+        const { data: newBiz } = await supabase.from('businesses').insert({
+          user_id: session.user.id,
+          name: 'My Business',
+          type: 'Restaurant',
+          tone: 'auto',
+          reply_mode: 'approve',
+        }).select().single()
+        if (newBiz) {
+          setBusiness(newBiz)
+          setSettingsForm({ name: newBiz.name, type: newBiz.type, tone: newBiz.tone || 'auto' })
+        }
       }
       setLoading(false)
     })
@@ -64,12 +80,17 @@ export default function Dashboard() {
       const res = await fetch('/api/generate-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId: review.id, reviewText: review.review_text, stars: review.stars, businessId: business.id }),
+        body: JSON.stringify({
+          reviewId:   review.id,
+          reviewText: review.review_text,
+          stars:      review.stars,
+          businessId: business.id,
+        }),
       })
       const data = await res.json()
       if (data.reply) {
-        setReplies(r  => ({ ...r,  [review.id]: data.reply }))
-        setStatuses(s => ({ ...s,  [review.id]: 'draft' }))
+        setReplies(r  => ({ ...r, [review.id]: data.reply }))
+        setStatuses(s => ({ ...s, [review.id]: 'draft' }))
         if (replyMode === 'auto') await postReply(review.id, data.reply)
       } else {
         alert('Error: ' + (data.error || 'Unknown error'))
@@ -110,6 +131,19 @@ export default function Dashboard() {
     }
   }
 
+  async function saveSettings() {
+    if (!business) return
+    setSaving(true)
+    await supabase.from('businesses').update({
+      name: settingsForm.name,
+      type: settingsForm.type,
+      tone: settingsForm.tone,
+    }).eq('id', business.id)
+    setBusiness(b => ({ ...b, ...settingsForm }))
+    setSaving(false)
+    alert('Settings saved!')
+  }
+
   async function toggleReplyMode() {
     const newMode = replyMode === 'approve' ? 'auto' : 'approve'
     setReplyMode(newMode)
@@ -134,7 +168,7 @@ export default function Dashboard() {
   return (
     <div style={{ display:'flex', minHeight:'100vh', fontFamily:'DM Sans,sans-serif', background:'#0e0f11', color:'#f0f0ee' }}>
 
-      {/* Sidebar */}
+      {/* ── SIDEBAR ── */}
       <nav style={{ width:220, background:'#16181c', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'28px 0', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ padding:'0 24px 24px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ fontFamily:'Georgia,serif', fontSize:20, color:'#c8f064' }}>● ReplyAI</div>
@@ -146,7 +180,7 @@ export default function Dashboard() {
             <div key={label} onClick={() => setPage(label)}
               style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, marginBottom:2,
                 background: page===label ? 'rgba(200,240,100,0.12)' : 'none',
-                color: page===label ? '#c8f064' : '#7a7d85', cursor:'pointer' }}>
+                color: page===label ? '#c8f064' : '#7a7d85', cursor:'pointer', fontSize:14 }}>
               {icon} {label}
             </div>
           ))}
@@ -168,6 +202,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Business info */}
         <div style={{ margin:'0 12px', padding:'10px 12px', background:'#1e2026', borderRadius:8 }}>
           <div style={{ fontSize:13, fontWeight:500 }}>{business?.name || 'My Business'}</div>
           <div style={{ fontSize:11, color:'#7a7d85', marginTop:2 }}>{user?.email}</div>
@@ -175,14 +210,15 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Main */}
+      {/* ── MAIN ── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
 
         {/* Topbar */}
         <div style={{ padding:'20px 36px', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'#16181c', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ fontFamily:'Georgia,serif', fontSize:22 }}>{page}</div>
           <div style={{ display:'flex', gap:10 }}>
-            <button onClick={() => setShowAdd(true)} style={{ background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'9px 16px', fontSize:13, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+            <button onClick={() => setShowAdd(true)}
+              style={{ background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'9px 16px', fontSize:13, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
               + Add review
             </button>
             <button onClick={() => reviews.filter(r => !replies[r.id]).forEach(r => generateReply(r))}
@@ -194,7 +230,7 @@ export default function Dashboard() {
 
         <div style={{ padding:'32px 36px', overflowY:'auto' }}>
 
-          {/* Stats - always visible */}
+          {/* ── STATS (always visible) ── */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:32 }}>
             {[
               ['Total reviews', reviews.length, 'All time'],
@@ -210,7 +246,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Add review form */}
+          {/* ── ADD REVIEW FORM ── */}
           {showAdd && (
             <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:24, marginBottom:24, maxWidth:600 }}>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Add a review manually</div>
@@ -229,17 +265,19 @@ export default function Dashboard() {
                 rows={4}
                 style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box', resize:'vertical' }}/>
               <div style={{ display:'flex', gap:10 }}>
-                <button onClick={addReview} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                <button onClick={addReview}
+                  style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                   Add review
                 </button>
-                <button onClick={() => setShowAdd(false)} style={{ background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 20px', fontSize:13, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                <button onClick={() => setShowAdd(false)}
+                  style={{ background:'none', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 20px', fontSize:13, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                   Cancel
                 </button>
               </div>
             </div>
           )}
 
-          {/* DASHBOARD PAGE */}
+          {/* ── DASHBOARD PAGE ── */}
           {page === 'Dashboard' && (
             <div>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
@@ -250,7 +288,8 @@ export default function Dashboard() {
                   <div style={{ fontSize:32, marginBottom:12 }}>✉</div>
                   <div style={{ fontSize:15, marginBottom:8 }}>No reviews yet</div>
                   <div style={{ fontSize:13, marginBottom:20 }}>Add a review manually to get started</div>
-                  <button onClick={() => setShowAdd(true)} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                  <button onClick={() => setShowAdd(true)}
+                    style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                     + Add your first review
                   </button>
                 </div>
@@ -313,10 +352,12 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* REVIEWS PAGE */}
+          {/* ── REVIEWS PAGE ── */}
           {page === 'Reviews' && (
             <div>
-              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span></div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
+                All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span>
+              </div>
               <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
                 {reviews.length === 0 && (
                   <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
@@ -341,10 +382,12 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* REPLIED PAGE */}
+          {/* ── REPLIED PAGE ── */}
           {page === 'Replied' && (
             <div>
-              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({replied})</span></div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
+                Replied Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({replied})</span>
+              </div>
               <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
                 {replied === 0 && (
                   <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
@@ -373,35 +416,68 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* SETTINGS PAGE */}
+          {/* ── SETTINGS PAGE ── */}
           {page === 'Settings' && (
             <div style={{ maxWidth:500 }}>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:20 }}>Settings</div>
+
+              {/* Business details */}
               <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24, marginBottom:16 }}>
                 <div style={{ fontSize:13, fontWeight:600, marginBottom:16, color:'#c8f064' }}>Business Details</div>
+
                 <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Name</label>
-                <input defaultValue={business?.name}
+                <input
+                  value={settingsForm.name}
+                  onChange={e => setSettingsForm(f => ({ ...f, name: e.target.value }))}
                   style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
+
                 <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Type</label>
-                <input defaultValue={business?.type}
+                <input
+                  value={settingsForm.type}
+                  onChange={e => setSettingsForm(f => ({ ...f, type: e.target.value }))}
+                  placeholder="e.g. Restaurant, Salon, Hotel"
                   style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
+
                 <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Reply Tone</label>
-                <select defaultValue={business?.tone || 'auto'}
-                  style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}>
+                <select
+                  value={settingsForm.tone}
+                  onChange={e => setSettingsForm(f => ({ ...f, tone: e.target.value }))}
+                  style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:20, boxSizing:'border-box' }}>
                   <option value="auto">Auto (based on review sentiment)</option>
                   <option value="professional">Professional</option>
-                  <option value="friendly">Friendly</option>
+                  <option value="friendly">Friendly & Warm</option>
                   <option value="empathetic">Empathetic</option>
                 </select>
-                <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
-                  Save changes
+
+                <button onClick={saveSettings} disabled={saving}
+                  style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
+
+              {/* Reply mode */}
+              <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24, marginBottom:16 }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:16, color:'#c8f064' }}>Reply Mode</div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:500 }}>{replyMode === 'auto' ? '⚡ Auto-post replies' : '✋ Approve before posting'}</div>
+                    <div style={{ fontSize:12, color:'#7a7d85', marginTop:4 }}>
+                      {replyMode === 'auto' ? 'Replies go live automatically' : 'You review each reply before it posts'}
+                    </div>
+                  </div>
+                  <div onClick={toggleReplyMode} style={{ width:44, height:24, background: replyMode==='auto' ? '#c8f064' : 'rgba(255,255,255,0.15)', borderRadius:99, cursor:'pointer', position:'relative', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:3, left: replyMode==='auto' ? 22 : 3, width:18, height:18, background:'#fff', borderRadius:'50%', transition:'left 0.2s' }}/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account */}
               <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24 }}>
                 <div style={{ fontSize:13, fontWeight:600, marginBottom:16, color:'#c8f064' }}>Account</div>
-                <div style={{ fontSize:13, color:'#7a7d85', marginBottom:4 }}>Signed in as</div>
+                <div style={{ fontSize:12, color:'#7a7d85', marginBottom:4 }}>Signed in as</div>
                 <div style={{ fontSize:13, marginBottom:16 }}>{user?.email}</div>
-                <button onClick={signOut} style={{ background:'none', border:'1px solid #ff6b6b', borderRadius:8, padding:'10px 20px', fontSize:13, color:'#ff6b6b', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                <button onClick={signOut}
+                  style={{ background:'none', border:'1px solid #ff6b6b', borderRadius:8, padding:'10px 20px', fontSize:13, color:'#ff6b6b', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                   Sign out
                 </button>
               </div>
