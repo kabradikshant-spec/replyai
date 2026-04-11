@@ -8,24 +8,23 @@ const supabase = createClient(
 )
 
 export default function Dashboard() {
-  const [user, setUser]           = useState(null)
-  const [business, setBusiness] = useState({ id: '1f01c3a6-85dc-403e-b88a-830c4b56b353', name: 'My Business', reply_mode: 'approve' })
-  const [reviews, setReviews]     = useState([])
+  const [user, setUser]             = useState(null)
+  const [business, setBusiness]     = useState({ id: '1f01c3a6-85dc-403e-b88a-830c4b56b353', name: 'My Business', reply_mode: 'approve' })
+  const [reviews, setReviews]       = useState([])
   const [generating, setGenerating] = useState({})
-  const [replies, setReplies]     = useState({})
-  const [statuses, setStatuses]   = useState({})
-  const [newReview, setNewReview] = useState({ text: '', stars: 5, name: '' })
-  const [showAdd, setShowAdd]     = useState(false)
-  const [loading, setLoading]     = useState(true)
-  const [replyMode, setReplyMode] = useState('approve')
-  const [page, setPage] = useState('Dashboard')
+  const [replies, setReplies]       = useState({})
+  const [statuses, setStatuses]     = useState({})
+  const [newReview, setNewReview]   = useState({ text: '', stars: 5, name: '' })
+  const [showAdd, setShowAdd]       = useState(false)
+  const [loading, setLoading]       = useState(true)
+  const [replyMode, setReplyMode]   = useState('approve')
+  const [page, setPage]             = useState('Dashboard')
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { window.location.href = '/login'; return }
       setUser(session.user)
 
-      // Load business
       const { data: biz } = await supabase
         .from('businesses')
         .select('*')
@@ -36,7 +35,6 @@ export default function Dashboard() {
         setBusiness(biz)
         setReplyMode(biz.reply_mode || 'approve')
 
-        // Load reviews
         const { data: revs } = await supabase
           .from('reviews')
           .select('*')
@@ -45,8 +43,7 @@ export default function Dashboard() {
 
         if (revs) {
           setReviews(revs)
-          const s = {}
-          const r = {}
+          const s = {}, r = {}
           revs.forEach(rv => {
             s[rv.id] = rv.reply_status
             if (rv.generated_reply) r[rv.id] = rv.generated_reply
@@ -67,22 +64,13 @@ export default function Dashboard() {
       const res = await fetch('/api/generate-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reviewId:   review.id,
-          reviewText: review.review_text,
-          stars:      review.stars,
-          businessId: business.id,
-        }),
+        body: JSON.stringify({ reviewId: review.id, reviewText: review.review_text, stars: review.stars, businessId: business.id }),
       })
       const data = await res.json()
       if (data.reply) {
         setReplies(r  => ({ ...r,  [review.id]: data.reply }))
         setStatuses(s => ({ ...s,  [review.id]: 'draft' }))
-
-        // If auto mode, post immediately
-        if (replyMode === 'auto') {
-          await postReply(review.id, data.reply)
-        }
+        if (replyMode === 'auto') await postReply(review.id, data.reply)
       } else {
         alert('Error: ' + (data.error || 'Unknown error'))
       }
@@ -94,18 +82,12 @@ export default function Dashboard() {
 
   async function postReply(reviewId, replyText) {
     const reply = replyText || replies[reviewId]
-    const res = await fetch('/api/post-reply', {
+    await fetch('/api/post-reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reviewId, reply, businessId: business.id }),
     })
-    const data = await res.json()
-    if (data.success) {
-      setStatuses(s => ({ ...s, [reviewId]: 'replied' }))
-    } else {
-      // Still mark as replied locally even if Google post fails
-      setStatuses(s => ({ ...s, [reviewId]: 'replied' }))
-    }
+    setStatuses(s => ({ ...s, [reviewId]: 'replied' }))
   }
 
   async function addReview() {
@@ -147,7 +129,7 @@ export default function Dashboard() {
 
   const pending  = reviews.filter(r => statuses[r.id] === 'pending' || !statuses[r.id]).length
   const replied  = reviews.filter(r => statuses[r.id] === 'replied').length
-  const avgStars = reviews.length ? (reviews.reduce((a,r) => a + r.stars, 0) / reviews.length).toFixed(1) : '—'
+  const avgStars = reviews.length ? (reviews.reduce((a,r) => a + r.stars, 0) / reviews.length).toFixed(1) : '–'
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', fontFamily:'DM Sans,sans-serif', background:'#0e0f11', color:'#f0f0ee' }}>
@@ -158,15 +140,17 @@ export default function Dashboard() {
           <div style={{ fontFamily:'Georgia,serif', fontSize:20, color:'#c8f064' }}>● ReplyAI</div>
           <div style={{ fontSize:11, color:'#7a7d85', marginTop:2, textTransform:'uppercase' }}>Review management</div>
         </div>
+
         <div style={{ padding:'16px 12px', flex:1 }}>
           {[['◈','Dashboard'],['✉','Reviews'],['✓','Replied'],['⚙','Settings']].map(([icon,label]) => (
-  <div key={label} onClick={() => setPage(label)}
-    style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, marginBottom:2,
-      background: page===label ? 'rgba(200,240,100,0.12)' : 'none',
-      color: page===label ? '#c8f064' : '#7a7d85', cursor:'pointer' }}>
-    {icon} {label}
-  </div>
-))}
+            <div key={label} onClick={() => setPage(label)}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, marginBottom:2,
+                background: page===label ? 'rgba(200,240,100,0.12)' : 'none',
+                color: page===label ? '#c8f064' : '#7a7d85', cursor:'pointer' }}>
+              {icon} {label}
+            </div>
+          ))}
+        </div>
 
         {/* Reply mode toggle */}
         <div style={{ margin:'0 12px 12px', padding:'14px', background:'#1e2026', borderRadius:8 }}>
@@ -196,7 +180,7 @@ export default function Dashboard() {
 
         {/* Topbar */}
         <div style={{ padding:'20px 36px', borderBottom:'1px solid rgba(255,255,255,0.07)', background:'#16181c', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontFamily:'Georgia,serif', fontSize:22 }}>Dashboard</div>
+          <div style={{ fontFamily:'Georgia,serif', fontSize:22 }}>{page}</div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={() => setShowAdd(true)} style={{ background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'9px 16px', fontSize:13, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
               + Add review
@@ -210,7 +194,7 @@ export default function Dashboard() {
 
         <div style={{ padding:'32px 36px', overflowY:'auto' }}>
 
-          {/* Stats */}
+          {/* Stats - always visible */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:32 }}>
             {[
               ['Total reviews', reviews.length, 'All time'],
@@ -226,7 +210,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Add review modal */}
+          {/* Add review form */}
           {showAdd && (
             <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:24, marginBottom:24, maxWidth:600 }}>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Add a review manually</div>
@@ -255,63 +239,69 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Reviews */}
-          {/* Page content */}
+          {/* DASHBOARD PAGE */}
           {page === 'Dashboard' && (
             <div>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>
-                Reviews {reviews.length > 0 && <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span>}
+                Pending Reviews {pending > 0 && <span style={{ color:'#7a7d85', fontWeight:400 }}>({pending})</span>}
               </div>
+              {reviews.length === 0 && (
+                <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
+                  <div style={{ fontSize:32, marginBottom:12 }}>✉</div>
+                  <div style={{ fontSize:15, marginBottom:8 }}>No reviews yet</div>
+                  <div style={{ fontSize:13, marginBottom:20 }}>Add a review manually to get started</div>
+                  <button onClick={() => setShowAdd(true)} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                    + Add your first review
+                  </button>
+                </div>
+              )}
               <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
-                {reviews.length === 0 && (
-                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
-                    <div style={{ fontSize:32, marginBottom:12 }}>✉</div>
-                    <div style={{ fontSize:15, marginBottom:8 }}>No reviews yet</div>
-                    <button onClick={() => setShowAdd(true)} style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Add your first review</button>
-                  </div>
-                )}
                 {reviews.filter(r => statuses[r.id] !== 'replied').map(r => {
-                  const status = statuses[r.id] || 'pending'
-                  const reply = replies[r.id]
+                  const status    = statuses[r.id] || 'pending'
+                  const reply     = replies[r.id]
                   const sentiment = r.stars >= 4 ? 'positive' : r.stars <= 2 ? 'negative' : 'neutral'
-                  const borderCol = sentiment === 'negative' ? '#ff6b6b' : '#ffb347'
+                  const borderCol = status==='draft' ? '#c8f064' : sentiment==='negative' ? '#ff6b6b' : '#ffb347'
                   return (
                     <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:`3px solid ${borderCol}`, borderRadius:12, padding:'18px 20px' }}>
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <div style={{ width:34, height:34, borderRadius:'50%', background:'#1e2026', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13, color:'#7a7d85' }}>
+                          <div style={{ width:34, height:34, borderRadius:'50%', background:'#1e2026', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13, color:'#7a7d85', flexShrink:0 }}>
                             {(r.reviewer_name||'?').split(' ').map(n=>n[0]).join('').toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontSize:13.5, fontWeight:500 }}>{r.reviewer_name}</div>
-                            <div style={{ color:'#ffb347', fontSize:12 }}>{'★'.repeat(r.stars)}</div>
+                            <div style={{ fontSize:13.5, fontWeight:500 }}>{r.reviewer_name || 'Anonymous'}</div>
+                            <div style={{ color:'#ffb347', fontSize:12 }}>{'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}</div>
                           </div>
                         </div>
-                        <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, background:'rgba(255,179,71,0.12)', color:'#ffb347' }}>Pending</span>
+                        <span style={{ fontSize:11, fontWeight:500, padding:'3px 9px', borderRadius:99, alignSelf:'flex-start',
+                          background: status==='draft' ? 'rgba(200,240,100,0.12)' : sentiment==='negative' ? 'rgba(255,107,107,0.12)' : 'rgba(255,179,71,0.12)',
+                          color: status==='draft' ? '#c8f064' : sentiment==='negative' ? '#ff6b6b' : '#ffb347' }}>
+                          {status==='draft' ? 'Ready to post' : sentiment==='negative' ? 'Needs reply' : 'Pending'}
+                        </span>
                       </div>
                       <div style={{ fontSize:13.5, color:'#7a7d85', lineHeight:1.6, marginBottom:12 }}>"{r.review_text}"</div>
                       {reply && (
                         <div style={{ background:'#1e2026', borderRadius:8, padding:'12px 14px', fontSize:13, color:'#c8f064', lineHeight:1.6, marginBottom:12, borderLeft:'2px solid #c8f064' }}>
-                          <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>AI Reply</div>
+                          <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>AI Reply</div>
                           {reply}
                         </div>
                       )}
-                      <div style={{ display:'flex', gap:8 }}>
+                      <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                         {!reply && (
                           <button onClick={() => generateReply(r)} disabled={generating[r.id]}
-                            style={{ background:'rgba(200,240,100,0.12)', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#c8f064', cursor:'pointer', opacity: generating[r.id] ? 0.6 : 1 }}>
+                            style={{ background:'rgba(200,240,100,0.12)', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#c8f064', cursor:'pointer', fontFamily:'DM Sans,sans-serif', opacity: generating[r.id] ? 0.6 : 1 }}>
                             {generating[r.id] ? '✦ Generating...' : '✦ Generate reply'}
                           </button>
                         )}
                         {reply && replyMode === 'approve' && (
                           <button onClick={() => postReply(r.id)}
-                            style={{ background:'#c8f064', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#1a2200', fontWeight:700, cursor:'pointer' }}>
+                            style={{ background:'#c8f064', border:'none', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#1a2200', fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                             ✓ Approve & post
                           </button>
                         )}
                         {reply && (
                           <button onClick={() => generateReply(r)} disabled={generating[r.id]}
-                            style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#7a7d85', cursor:'pointer' }}>
+                            style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'7px 14px', fontSize:12, color:'#7a7d85', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                             ↺ Re-generate
                           </button>
                         )}
@@ -323,15 +313,21 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* REVIEWS PAGE */}
           {page === 'Reviews' && (
             <div>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>All Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({reviews.length})</span></div>
               <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
+                {reviews.length === 0 && (
+                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
+                    No reviews yet
+                  </div>
+                )}
                 {reviews.map(r => (
                   <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'16px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <div style={{ fontSize:13.5, fontWeight:500, marginBottom:4 }}>{r.reviewer_name}</div>
-                      <div style={{ color:'#ffb347', fontSize:12, marginBottom:4 }}>{'★'.repeat(r.stars)}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13.5, fontWeight:500, marginBottom:4 }}>{r.reviewer_name || 'Anonymous'}</div>
+                      <div style={{ color:'#ffb347', fontSize:12, marginBottom:6 }}>{'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}</div>
                       <div style={{ fontSize:13, color:'#7a7d85' }}>"{r.review_text}"</div>
                     </div>
                     <span style={{ fontSize:11, padding:'3px 9px', borderRadius:99, marginLeft:16, flexShrink:0,
@@ -345,19 +341,29 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* REPLIED PAGE */}
           {page === 'Replied' && (
             <div>
-              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews</div>
+              <div style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Replied Reviews <span style={{ color:'#7a7d85', fontWeight:400 }}>({replied})</span></div>
               <div style={{ display:'flex', flexDirection:'column', gap:12, maxWidth:740 }}>
-                {reviews.filter(r => statuses[r.id] === 'replied').length === 0 && (
-                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>No replied reviews yet</div>
+                {replied === 0 && (
+                  <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:40, textAlign:'center', color:'#7a7d85' }}>
+                    No replied reviews yet
+                  </div>
                 )}
                 {reviews.filter(r => statuses[r.id] === 'replied').map(r => (
                   <div key={r.id} style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderLeft:'3px solid #c8f064', borderRadius:12, padding:'18px 20px' }}>
-                    <div style={{ fontSize:13.5, fontWeight:500, marginBottom:4 }}>{r.reviewer_name}</div>
-                    <div style={{ color:'#ffb347', fontSize:12, marginBottom:8 }}>{'★'.repeat(r.stars)}</div>
-                    <div style={{ fontSize:13, color:'#7a7d85', marginBottom:10 }}>"{r.review_text}"</div>
-                    <div style={{ background:'#1e2026', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c8f064', borderLeft:'2px solid #c8f064' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                      <div style={{ width:34, height:34, borderRadius:'50%', background:'#1e2026', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13, color:'#7a7d85' }}>
+                        {(r.reviewer_name||'?').split(' ').map(n=>n[0]).join('').toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize:13.5, fontWeight:500 }}>{r.reviewer_name || 'Anonymous'}</div>
+                        <div style={{ color:'#ffb347', fontSize:12 }}>{'★'.repeat(r.stars)}{'☆'.repeat(5-r.stars)}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize:13.5, color:'#7a7d85', lineHeight:1.6, marginBottom:12 }}>"{r.review_text}"</div>
+                    <div style={{ background:'#1e2026', borderRadius:8, padding:'12px 14px', fontSize:13, color:'#c8f064', lineHeight:1.6, borderLeft:'2px solid #c8f064' }}>
                       <div style={{ fontSize:11, color:'#7a7d85', marginBottom:4, textTransform:'uppercase' }}>Reply posted</div>
                       {replies[r.id]}
                     </div>
@@ -367,20 +373,43 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* SETTINGS PAGE */}
           {page === 'Settings' && (
             <div style={{ maxWidth:500 }}>
               <div style={{ fontSize:15, fontWeight:600, marginBottom:20 }}>Settings</div>
-              <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24 }}>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:16 }}>Business Details</div>
+              <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24, marginBottom:16 }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:16, color:'#c8f064' }}>Business Details</div>
                 <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Name</label>
                 <input defaultValue={business?.name}
                   style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
                 <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Business Type</label>
                 <input defaultValue={business?.type}
                   style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}/>
-                <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                <label style={{ fontSize:12, color:'#7a7d85', textTransform:'uppercase', display:'block', marginBottom:6 }}>Reply Tone</label>
+                <select defaultValue={business?.tone || 'auto'}
+                  style={{ width:'100%', background:'#1e2026', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px 14px', color:'#f0f0ee', fontFamily:'DM Sans,sans-serif', fontSize:14, marginBottom:16, boxSizing:'border-box' }}>
+                  <option value="auto">Auto (based on review sentiment)</option>
+                  <option value="professional">Professional</option>
+                  <option value="friendly">Friendly</option>
+                  <option value="empathetic">Empathetic</option>
+                </select>
+                <button style={{ background:'#c8f064', color:'#1a2200', border:'none', borderRadius:8, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
                   Save changes
+                </button>
+              </div>
+              <div style={{ background:'#16181c', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:24 }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:16, color:'#c8f064' }}>Account</div>
+                <div style={{ fontSize:13, color:'#7a7d85', marginBottom:4 }}>Signed in as</div>
+                <div style={{ fontSize:13, marginBottom:16 }}>{user?.email}</div>
+                <button onClick={signOut} style={{ background:'none', border:'1px solid #ff6b6b', borderRadius:8, padding:'10px 20px', fontSize:13, color:'#ff6b6b', cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}>
+                  Sign out
                 </button>
               </div>
             </div>
           )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
